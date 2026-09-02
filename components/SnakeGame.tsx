@@ -19,6 +19,40 @@ function randomFood(snake: Point[]): Point {
   return food
 }
 
+// Simple synth sounds using Web Audio API
+const playSound = (type: 'eat' | 'die') => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioContext) return
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gainNode = ctx.createGain()
+
+    osc.connect(gainNode)
+    gainNode.connect(ctx.destination)
+
+    if (type === 'eat') {
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(800, ctx.currentTime)
+      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1)
+      gainNode.gain.setValueAtTime(0.1, ctx.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.1)
+    } else if (type === 'die') {
+      osc.type = 'sawtooth'
+      osc.frequency.setValueAtTime(300, ctx.currentTime)
+      osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.3)
+      gainNode.gain.setValueAtTime(0.2, ctx.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.3)
+    }
+  } catch (e) {
+    // Ignore audio errors if browser blocks auto-play
+  }
+}
+
 interface Props {
   onEnterPortfolio: () => void
   onScoreUpdate?: (score: number) => void
@@ -57,8 +91,12 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+    // Background
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
     // Subtle grid lines
-    ctx.strokeStyle = '#f3f4f6'
+    ctx.strokeStyle = '#e5e7eb' // gray-200
     ctx.lineWidth = 0.5
     for (let i = 0; i <= GRID; i++) {
       ctx.beginPath()
@@ -71,21 +109,81 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
       ctx.stroke()
     }
 
-    // Food (Black dot)
-    ctx.fillStyle = '#000000'
+    // Food (Apple)
     const fx = s.food.x * CELL + CELL / 2
     const fy = s.food.y * CELL + CELL / 2
+
+    // Apple shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.1)'
+    ctx.beginPath()
+    ctx.arc(fx + 2, fy + 2, CELL / 2 - 2, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Apple body
+    ctx.fillStyle = '#ef4444' // red-500
     ctx.beginPath()
     ctx.arc(fx, fy, CELL / 2 - 2, 0, Math.PI * 2)
     ctx.fill()
 
+    // Apple leaf
+    ctx.fillStyle = '#22c55e'
+    ctx.beginPath()
+    ctx.ellipse(fx + 2, fy - 4, 3, 1.5, Math.PI / 4, 0, Math.PI * 2)
+    ctx.fill()
+
     // Snake
     s.snake.forEach((seg, i) => {
-      const alpha = i === 0 ? 1 : Math.max(0.2, 1 - (i / s.snake.length) * 0.7)
-      ctx.fillStyle = i === 0 ? '#000000' : `rgba(0,0,0,${alpha})`
-      const size = i === 0 ? CELL - 1 : CELL - 3
-      const offset = i === 0 ? 0 : 1
-      ctx.fillRect(seg.x * CELL + offset, seg.y * CELL + offset, size, size)
+      const isHead = i === 0
+      const cx = seg.x * CELL + CELL / 2
+      const cy = seg.y * CELL + CELL / 2
+      const radius = isHead ? CELL / 2 - 1 : CELL / 2 - 2
+
+      // Snake shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.1)'
+      ctx.beginPath()
+      ctx.arc(cx + 1, cy + 1, radius, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Snake body (gradient from green to dark green)
+      const alpha = isHead ? 1 : Math.max(0.4, 1 - (i / s.snake.length) * 0.5)
+      ctx.fillStyle = isHead ? '#10b981' : `rgba(5, 150, 105, ${alpha})` // emerald-500 to emerald-600
+      ctx.beginPath()
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+      ctx.fill()
+
+      if (isHead) {
+        // Draw Eyes based on direction
+        ctx.fillStyle = '#ffffff'
+        const eyeRadius = 2.5
+        const pupilRadius = 1
+
+        let eye1 = { x: cx, y: cy }
+        let eye2 = { x: cx, y: cy }
+
+        if (s.dir.dx === 1) { // right
+          eye1 = { x: cx + 2, y: cy - 4 }
+          eye2 = { x: cx + 2, y: cy + 4 }
+        } else if (s.dir.dx === -1) { // left
+          eye1 = { x: cx - 2, y: cy - 4 }
+          eye2 = { x: cx - 2, y: cy + 4 }
+        } else if (s.dir.dy === 1) { // down
+          eye1 = { x: cx - 4, y: cy + 2 }
+          eye2 = { x: cx + 4, y: cy + 2 }
+        } else if (s.dir.dy === -1) { // up
+          eye1 = { x: cx - 4, y: cy - 2 }
+          eye2 = { x: cx + 4, y: cy - 2 }
+        } else { // initial/idle (right)
+          eye1 = { x: cx + 2, y: cy - 4 }
+          eye2 = { x: cx + 2, y: cy + 4 }
+        }
+
+        ctx.beginPath(); ctx.arc(eye1.x, eye1.y, eyeRadius, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(eye2.x, eye2.y, eyeRadius, 0, Math.PI * 2); ctx.fill()
+
+        ctx.fillStyle = '#000000'
+        ctx.beginPath(); ctx.arc(eye1.x, eye1.y, pupilRadius, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(eye2.x, eye2.y, pupilRadius, 0, Math.PI * 2); ctx.fill()
+      }
     })
   }, [])
 
@@ -120,6 +218,7 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
 
       // Wall collision
       if (head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID) {
+        playSound('die')
         s.running = false
         s.dead = true
         setIsGameOver(true)
@@ -128,6 +227,7 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
       }
       // Self collision
       if (s.snake.some(seg => seg.x === head.x && seg.y === head.y)) {
+        playSound('die')
         s.running = false
         s.dead = true
         setIsGameOver(true)
@@ -138,6 +238,7 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
       s.snake.unshift(head)
 
       if (head.x === s.food.x && head.y === s.food.y) {
+        playSound('eat')
         s.score += 1
         setCurrentScore(s.score)
         if (onScoreUpdate) onScoreUpdate(s.score)
@@ -186,7 +287,7 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
       }
 
       // Start on first direction key
-      if (!s.running && !s.dead && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d','W','A','S','D'].includes(e.key)) {
+      if (!s.running && !s.dead && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'].includes(e.key)) {
         s.running = true
         setIsGameStarted(true)
         s.lastTime = 0
@@ -211,40 +312,54 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
   return (
     <div className="flex flex-col items-center gap-3 w-full">
       {/* Live Score Counter */}
-      <div className="flex items-center justify-between w-full px-1 text-xs text-gray-500 font-medium">
-        <span>Skor: <strong className="text-black text-sm">{currentScore}</strong></span>
-        <span>High Score: <strong className="text-black text-sm">{highScore}</strong></span>
+      <div className="flex items-center justify-between w-full">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-[11px] font-medium text-gray-600">
+          <span className="w-1.5 h-1.5 rounded-full bg-black" />
+          Skor
+          <strong className="text-black text-sm tabular-nums">{currentScore}</strong>
+        </span>
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black text-[11px] font-medium text-white">
+          High Score
+          <strong className="text-white text-sm tabular-nums">{highScore}</strong>
+        </span>
       </div>
 
       {/* Canvas Box */}
-      <div className="relative border border-gray-200 rounded-lg overflow-hidden bg-white shadow-inner">
+      <div className="relative w-full rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
         <canvas
           ref={canvasRef}
           width={GRID * CELL}
           height={GRID * CELL}
-          style={{ imageRendering: 'pixelated', display: 'block' }}
+          className="block w-full aspect-square"
         />
 
         {/* Game Over Overlay */}
         {isGameOver && (
-          <div className="absolute inset-0 bg-white/90 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center animate-fade-in">
-            <p className="text-lg font-bold text-gray-900 mb-1">Game Over!</p>
-            <p className="text-xs text-gray-500 mb-4">
-              Skor akhir: <strong className="text-black text-sm">{currentScore}</strong>
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs">
-              <button
-                onClick={handleStartOrRestart}
-                className="flex-1 py-2 px-3 bg-black text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                Main Lagi ↺
-              </button>
-              <button
-                onClick={onEnterPortfolio}
-                className="flex-1 py-2 px-3 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:border-black hover:text-black transition-colors"
-              >
-                Masuk Portfolio →
-              </button>
+          <div className="absolute inset-0 bg-white/95 flex flex-col items-center justify-center p-6 text-center">
+            <div className="scale-in flex flex-col items-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 ring-1 ring-gray-200 flex items-center justify-center">
+                <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <p className="text-lg font-bold text-gray-900 mb-1">Game Over!</p>
+              <p className="text-xs text-gray-500 mb-4">
+                Skor akhir: <strong className="text-black text-sm tabular-nums">{currentScore}</strong>
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs">
+                <button
+                  onClick={handleStartOrRestart}
+                  className="flex-1 py-2 px-3 bg-black text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  Main Lagi
+                </button>
+                <button
+                  onClick={onEnterPortfolio}
+                  className="flex-1 py-2 px-3 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:border-black hover:text-black transition-colors"
+                >
+                  Masuk Portfolio
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -253,11 +368,18 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
         {!isGameStarted && !isGameOver && (
           <div
             onClick={handleStartOrRestart}
-            className="absolute inset-0 bg-black/5 flex items-center justify-center cursor-pointer hover:bg-black/10 transition-colors"
+            className="absolute inset-0 bg-black/5 flex items-center justify-center cursor-pointer hover:bg-black/10 transition-colors group"
           >
-            <span className="bg-white/95 px-3 py-1.5 rounded-md border border-gray-200 text-xs font-medium text-gray-700 shadow-sm">
-              Klik / Tekan Tombol Arah untuk Main
-            </span>
+            <div className="flex flex-col items-center gap-2.5">
+              <div className="w-11 h-11 rounded-full bg-black flex items-center justify-center group-hover:bg-gray-800 transition-colors">
+                <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+              <span className="text-[11px] font-medium text-gray-600 bg-white/90 border border-gray-200 px-2.5 py-1 rounded-full whitespace-nowrap">
+                Klik / Tekan Arah untuk Main
+              </span>
+            </div>
           </div>
         )}
       </div>
