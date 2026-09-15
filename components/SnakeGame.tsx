@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback, useState, type TouchEvent } from 'react'
 
 const GRID = 20
 const CELL = 20
@@ -203,8 +203,7 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
     draw()
   }, [draw])
 
-  const loop = useCallback((timestamp: number) => {
-    const s = stateRef.current
+  const loop = useCallback((timestamp: number) => {    const s = stateRef.current
     if (!s.running) return
 
     if (timestamp - s.lastTime >= s.speed) {
@@ -304,8 +303,58 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
     }
   }, [draw, loop, resetGame])
 
+  const touchStartRef = useRef<Point | null>(null)
+
+  const setDirection = useCallback((dx: number, dy: number) => {
+    const s = stateRef.current
+    const { dx: curDx, dy: curDy } = s.nextDir
+    // Cegah putar balik 180 derajat
+    if (dx === -curDx && dy === -curDy) return
+    if (dx === curDx && dy === curDy) {
+      // tetap start game kalau belum jalan
+    } else {
+      s.nextDir = { dx, dy }
+    }
+    if (!s.running && !s.dead) {
+      s.running = true
+      setIsGameStarted(true)
+      s.lastTime = 0
+      cancelAnimationFrame(s.frameId)
+      s.frameId = requestAnimationFrame(loop)
+    }
+  }, [loop])
+
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    const t = e.touches[0]
+    touchStartRef.current = { x: t.clientX, y: t.clientY }
+  }, [])
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    // Cegah halaman ikut scroll saat swipe di area game
+    if (e.cancelable) e.preventDefault()
+    const start = touchStartRef.current
+    if (!start) return
+    const t = e.touches[0]
+    const diffX = t.clientX - start.x
+    const diffY = t.clientY - start.y
+    // Threshold kecil supaya responsif tapi tidak terlalu sensitif
+    if (Math.abs(diffX) < 24 && Math.abs(diffY) < 24) return
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+      setDirection(diffX > 0 ? 1 : -1, 0)
+    } else {
+      setDirection(0, diffY > 0 ? 1 : -1)
+    }
+    // Reset titik awal agar satu swipe panjang bisa belok berkali-kali
+    touchStartRef.current = { x: t.clientX, y: t.clientY }
+  }, [setDirection])
+
+  const handleTouchEnd = useCallback(() => {
+    touchStartRef.current = null
+  }, [])
+
   const handleStartOrRestart = () => {
     resetGame()
+    cancelAnimationFrame(stateRef.current.frameId)
     stateRef.current.frameId = requestAnimationFrame(loop)
   }
 
@@ -325,7 +374,12 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
       </div>
 
       {/* Canvas Box */}
-      <div className="relative w-full rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
+      <div
+        className="relative w-full rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm touch-none select-none"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <canvas
           ref={canvasRef}
           width={GRID * CELL}
@@ -377,7 +431,7 @@ export default function SnakeGame({ onEnterPortfolio, onScoreUpdate }: Props) {
                 </svg>
               </div>
               <span className="text-[11px] font-medium text-gray-600 bg-white/90 border border-gray-200 px-2.5 py-1 rounded-full whitespace-nowrap">
-                Klik / Tekan Arah untuk Main
+                Klik / Tap / Swipe untuk Main
               </span>
             </div>
           </div>

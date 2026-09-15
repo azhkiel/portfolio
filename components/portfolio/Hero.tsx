@@ -6,6 +6,12 @@ export default function Hero() {
       className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white"
       style={{ fontFamily: 'Inter, sans-serif' }}>
       <div className="max-w-4xl mx-auto px-4 text-center">
+        <div className="fade-in" style={{ animationDelay: '0.1s' }}>
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-medium text-gray-600 mb-6 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            Tersedia untuk proyek baru
+          </span>
+        </div>
         <div className="fade-in" style={{ animationDelay: '0.2s' }}>
           <h1 className="text-4xl md:text-6xl font-bold mb-4 text-gradient">
             Moch Azriel Maulana Racmadhani

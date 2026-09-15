@@ -7,13 +7,15 @@ import SnakeGame from '@/components/SnakeGame'
 import PortfolioPage from '@/components/portfolio/PortfolioPage'
 import type { Project } from '@/components/portfolio/ProjectCard'
 import type { ContactInfo } from '@/components/portfolio/Contact'
+import type { FeedPreviewItem } from '@/components/portfolio/FeedPreview'
 
 interface Props {
   projects: Project[]
   contact: ContactInfo | null
+  feeds: FeedPreviewItem[]
 }
 
-export default function HomeClient({ projects, contact }: Props) {
+export default function HomeClient({ projects, contact, feeds }: Props) {
   const [showPortfolio, setShowPortfolio] = useState(false)
 
   function handleEnterPortfolio() {
@@ -27,7 +29,7 @@ export default function HomeClient({ projects, contact }: Props) {
         aria-hidden={!showPortfolio}
         style={{ display: showPortfolio ? 'block' : 'none' }}
       >
-        <PortfolioPage projects={projects} contact={contact} />
+        <PortfolioPage projects={projects} contact={contact} feeds={feeds} />
       </div>
 
       <AnimatePresence>

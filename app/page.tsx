@@ -19,8 +19,18 @@ async function getContact() {
   return data
 }
 
-export default async function HomePage() {
-  const [projects, contact] = await Promise.all([getProjects(), getContact()])
+async function getLatestFeeds() {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('feeds')
+    .select('*, feed_images(*)')
+    .order('created_at', { ascending: false })
+    .limit(3)
+  return data ?? []
+}
 
-  return <HomeClient projects={projects} contact={contact} />
+export default async function HomePage() {
+  const [projects, contact, feeds] = await Promise.all([getProjects(), getContact(), getLatestFeeds()])
+
+  return <HomeClient projects={projects} contact={contact} feeds={feeds} />
 }

@@ -30,7 +30,7 @@ const doubled = [...skills, ...skills]
 export default function SkillsMarquee() {
   return (
     <section id="skills"
-      className="bg-gray-50 min-h-screen flex items-center justify-center p-4"
+      className="bg-gray-50 py-20"
       style={{ fontFamily: 'Inter, sans-serif' }}>
       <div className="w-full max-w-6xl mx-auto">
         <div className="text-center mb-8">

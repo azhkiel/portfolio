@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { fetchAllUsers } from '@/lib/adminUsers'
 import PortfolioDashboard from './PortfolioDashboard'
 
 export default async function DashboardPortfolioPage() {
@@ -12,22 +12,20 @@ export default async function DashboardPortfolioPage() {
     supabase.from('contact_info').select('*').single(),
   ])
 
-  // Fetch semua user LinkJar menggunakan service role (bypass RLS)
-  const serviceClient = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
-  const { data: users } = await serviceClient
-    .from('profiles')
-    .select('id, username, role, created_at')
-    .order('created_at', { ascending: false })
+  // Auth sebagai sumber kebenaran, diperkaya tabel profiles (bypass RLS via service role).
+  // profiles bisa kosong untuk user lama karena insert saat register gagal diam-diam.
+  let users: Awaited<ReturnType<typeof fetchAllUsers>> = []
+  try {
+    users = await fetchAllUsers()
+  } catch (e) {
+    console.error('[dashboard/portfolio] gagal memuat pengguna:', e instanceof Error ? e.message : e)
+  }
 
   return (
     <PortfolioDashboard
       initialProjects={projectsRes.data ?? []}
       initialContact={contactRes.data}
-      initialUsers={users ?? []}
+      initialUsers={users}
     />
   )
 }

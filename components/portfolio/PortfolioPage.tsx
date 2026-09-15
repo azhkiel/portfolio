@@ -5,15 +5,17 @@ import SkillsMarquee from '@/components/portfolio/SkillsMarquee'
 import Contact, { type ContactInfo } from '@/components/portfolio/Contact'
 import Footer from '@/components/portfolio/Footer'
 import ProjectCard, { type Project } from '@/components/portfolio/ProjectCard'
+import FeedPreview, { type FeedPreviewItem } from '@/components/portfolio/FeedPreview'
 
 interface Props {
   projects: Project[]
   contact: ContactInfo | null
+  feeds: FeedPreviewItem[]
 }
 
 const delays = ['0.1s', '0.2s', '0.3s', '0.4s', '0.5s', '0.6s']
 
-export default function PortfolioPage({ projects, contact }: Props) {
+export default function PortfolioPage({ projects, contact, feeds }: Props) {
   return (
     <>
       <Nav />
@@ -49,6 +51,7 @@ export default function PortfolioPage({ projects, contact }: Props) {
           </div>
         </section>
 
+        <FeedPreview feeds={feeds} />
         <SkillsMarquee />
         <Contact contact={contact ?? undefined} />
       </main>

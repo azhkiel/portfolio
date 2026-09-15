@@ -6,7 +6,10 @@ export default function About() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Tentang Saya</h2>
-          <div className="w-20 h-1 bg-black mx-auto" />
+          <div className="w-20 h-1 bg-black mx-auto mb-4" />
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Sedikit cerita tentang latar belakang dan fokus saya di dunia teknologi.
+          </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -31,6 +34,16 @@ export default function About() {
               pemrograman dan teknologi modern, saya selalu siap menghadapi tantangan baru
               dalam dunia digital.
             </p>
+            <div className="flex flex-wrap gap-2">
+              {['S1 Sistem Informasi', 'Full Stack Developer', 'Tech Enthusiast'].map(item => (
+                <span
+                  key={item}
+                  className="px-3 py-1.5 bg-gray-100 border border-gray-200 text-gray-700 rounded-full text-xs font-medium"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>

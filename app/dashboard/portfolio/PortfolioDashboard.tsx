@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Project } from '@/components/portfolio/ProjectCard'
@@ -47,6 +47,9 @@ export default function PortfolioDashboard({ initialProjects, initialContact, in
   const [deleteUserTarget, setDeleteUserTarget] = useState<UserProfile | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [usersError, setUsersError] = useState<string | null>(null)
+  const usersFetchedRef = useRef(false)
 
   function addToast(message: string, type: ToastMessage['type'] = 'success') {
     const id = Math.random().toString(36).slice(2)
@@ -85,7 +88,8 @@ export default function PortfolioDashboard({ initialProjects, initialContact, in
     })
 
     if (!res.ok) {
-      addToast('Gagal menghapus pengguna.', 'error')
+      const json = await res.json().catch(() => null)
+      addToast(json?.error ?? 'Gagal menghapus pengguna.', 'error')
     } else {
       setUsers(prev => prev.filter(u => u.id !== deleteUserTarget.id))
       addToast(`Pengguna @${deleteUserTarget.username} dihapus.`, 'warning')
@@ -93,6 +97,29 @@ export default function PortfolioDashboard({ initialProjects, initialContact, in
     }
     setDeleting(false)
   }
+
+  const fetchUsers = useCallback(async () => {
+    setUsersLoading(true)
+    setUsersError(null)
+    try {
+      const res = await fetch('/api/admin/users', { cache: 'no-store' })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(json?.error ?? 'Gagal memuat pengguna.')
+      setUsers(json?.users ?? [])
+    } catch (e) {
+      setUsersError(e instanceof Error ? e.message : 'Gagal memuat pengguna.')
+    } finally {
+      setUsersLoading(false)
+      usersFetchedRef.current = true
+    }
+  }, [])
+
+  // Muat ulang daftar pengguna setiap tab Pengguna dibuka agar data selalu fresh
+  useEffect(() => {
+    if (activeTab === 'users' && !usersFetchedRef.current) {
+      fetchUsers()
+    }
+  }, [activeTab, fetchUsers])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -252,12 +279,37 @@ export default function PortfolioDashboard({ initialProjects, initialContact, in
               <div>
                 <h2 className="text-lg font-semibold">Pengguna LinkJar</h2>
                 <p className="text-sm text-gray-500">
-                  {users.filter(u => u.role === 'user').length} user terdaftar
+                  {usersLoading && users.length === 0
+                    ? 'Memuat pengguna…'
+                    : `${users.filter(u => u.role === 'user').length} user terdaftar`}
                 </p>
               </div>
+              <button
+                onClick={fetchUsers}
+                disabled={usersLoading}
+                className="px-4 py-2 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-60"
+              >
+                {usersLoading ? 'Memuat…' : '↻ Muat Ulang'}
+              </button>
             </div>
 
-            {users.filter(u => u.role === 'user').length === 0 ? (
+            {usersError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between gap-3">
+                <p className="text-sm text-red-600">{usersError}</p>
+                <button
+                  onClick={fetchUsers}
+                  className="px-3 py-1.5 text-xs border border-red-200 text-red-600 rounded-lg hover:bg-red-100 transition-colors flex-shrink-0"
+                >
+                  Coba Lagi
+                </button>
+              </div>
+            )}
+
+            {usersLoading && users.length === 0 && !usersError ? (
+              <div className="text-center py-12 text-gray-400">
+                <p>Memuat daftar pengguna…</p>
+              </div>
+            ) : users.filter(u => u.role === 'user').length === 0 && !usersError ? (
               <div className="text-center py-12 text-gray-400">
                 <div className="text-4xl mb-2">👥</div>
                 <p>Belum ada pengguna yang mendaftar.</p>

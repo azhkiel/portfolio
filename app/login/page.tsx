@@ -33,6 +33,26 @@ export default function LoginPage() {
       .eq('id', data.user.id)
       .single()
 
+    if (!profile) {
+      // Self-healing: user ada di Auth tapi baris profiles belum tercipta
+      // (mis. register saat email-confirm aktif). Buat sekarang, session sudah ada
+      // sehingga RLS "insert saat register" lolos.
+      const fallbackUsername =
+        (typeof data.user.user_metadata?.username === 'string' &&
+          data.user.user_metadata.username.trim()) ||
+        (data.user.email?.split('@')[0] ?? 'user')
+      const { error: insertError } = await supabase.from('profiles').insert({
+        id: data.user.id,
+        username: fallbackUsername.toLowerCase(),
+        role: 'user',
+      })
+      if (insertError && insertError.code !== '23505') {
+        setError(`Login berhasil tapi profil gagal dibuat: ${insertError.message}`)
+        setLoading(false)
+        return
+      }
+    }
+
     const destination = profile?.role === 'admin' ? '/dashboard/portfolio' : '/links'
     router.push(destination)
     router.refresh()

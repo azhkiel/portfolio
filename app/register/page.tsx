@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -53,13 +54,37 @@ export default function RegisterPage() {
     }
 
     if (data.user) {
-      await supabase.from('profiles').insert({
-        id: data.user.id,
-        username: username.trim().toLowerCase(),
-        role: 'user',
-      })
-      router.push('/links')
-      router.refresh()
+      const usernameLower = username.trim().toLowerCase()
+
+      if (data.session) {
+        // Sudah ada session (email confirm nonaktif) → buat profiles sekarang.
+        // RLS "profiles: insert saat register" butuh auth.uid() = id.
+        const { error: profileError } = await supabase.from('profiles').insert({
+          id: data.user.id,
+          username: usernameLower,
+          role: 'user',
+        })
+
+        if (profileError) {
+          // Jangan diam: username duplikat & RLS perlu terlihat user/dev.
+          if (profileError.code === '23505') {
+            setError('Username sudah dipakai, coba yang lain.')
+          } else {
+            setError(`Pendaftaran berhasil tapi profil gagal dibuat: ${profileError.message}`)
+          }
+          setLoading(false)
+          return
+        }
+
+        router.push('/links')
+        router.refresh()
+      } else {
+        // Email confirm aktif → belum ada session, insert akan gagal RLS.
+        // Profil dibuat otomatis saat login pertama. Minta user cek email.
+        setLoading(false)
+        setSuccess(`Akun dibuat! Cek email ${email} untuk konfirmasi, lalu login.`)
+        return
+      }
     }
   }
 
@@ -127,6 +152,10 @@ export default function RegisterPage() {
 
           {error && (
             <p className="text-red-500 text-sm">{error}</p>
+          )}
+
+          {success && (
+            <p className="text-green-600 text-sm">{success}</p>
           )}
 
           <button
