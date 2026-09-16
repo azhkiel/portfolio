@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Project } from '@/components/portfolio/ProjectCard'
 import ProjectFormModal from './ProjectFormModal'
 import ContactFormModal from './ContactFormModal'
+import AssistanceTab from './AssistanceTab'
 import Toast, { type ToastMessage } from '@/components/linkjar/Toast'
 
 interface ContactInfo {
@@ -23,15 +24,28 @@ interface UserProfile {
   created_at: string
 }
 
+type Testimonial = {
+  id: string
+  name: string
+  service: string | null
+  rating: number | null
+  message: string
+  screenshot_url: string | null
+  sort_order: number
+  is_published: boolean
+  created_at: string
+}
+
 interface Props {
   initialProjects: Project[]
   initialContact: ContactInfo | null
   initialUsers: UserProfile[]
+  initialTestimonials: Testimonial[]
 }
 
-type Tab = 'projects' | 'contact' | 'users'
+type Tab = 'projects' | 'contact' | 'users' | 'assistance'
 
-export default function PortfolioDashboard({ initialProjects, initialContact, initialUsers }: Props) {
+export default function PortfolioDashboard({ initialProjects, initialContact, initialUsers, initialTestimonials }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -129,6 +143,7 @@ export default function PortfolioDashboard({ initialProjects, initialContact, in
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'projects', label: 'Proyek', count: projects.length },
+    { key: 'assistance', label: 'Assistance', count: initialTestimonials.length },
     { key: 'contact', label: 'Kontak' },
     { key: 'users', label: 'Pengguna', count: users.filter(u => u.role === 'user').length },
   ]
@@ -156,12 +171,12 @@ export default function PortfolioDashboard({ initialProjects, initialContact, in
 
         {/* Tab Navigation */}
         <div className="max-w-5xl mx-auto px-4">
-          <div className="flex gap-1 pb-0">
+          <div className="flex gap-1 pb-0 overflow-x-auto scrollbar-none">
             {tabs.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
                   ${activeTab === tab.key
                     ? 'border-black text-black'
                     : 'border-transparent text-gray-500 hover:text-gray-700'}`}
@@ -270,6 +285,11 @@ export default function PortfolioDashboard({ initialProjects, initialContact, in
               </div>
             )}
           </section>
+        )}
+
+        {/* ── TAB: ASSISTANCE ── */}
+        {activeTab === 'assistance' && (
+          <AssistanceTab initial={initialTestimonials} onToast={addToast} />
         )}
 
         {/* ── TAB: PENGGUNA ── */}

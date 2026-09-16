@@ -7,9 +7,10 @@ export default async function DashboardPortfolioPage() {
   await requireAdmin()
   const supabase = await createClient()
 
-  const [projectsRes, contactRes] = await Promise.all([
+  const [projectsRes, contactRes, testimonialsRes] = await Promise.all([
     supabase.from('projects').select('*').order('sort_order', { ascending: true }),
     supabase.from('contact_info').select('*').single(),
+    supabase.from('testimonials').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: false }),
   ])
 
   // Auth sebagai sumber kebenaran, diperkaya tabel profiles (bypass RLS via service role).
@@ -26,6 +27,7 @@ export default async function DashboardPortfolioPage() {
       initialProjects={projectsRes.data ?? []}
       initialContact={contactRes.data}
       initialUsers={users}
+      initialTestimonials={testimonialsRes.data ?? []}
     />
   )
 }

@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
+html { scroll-behavior: smooth; }
+section[id] { scroll-margin-top: 80px; }
+
 /* ── Portfolio Animations ── */
 .fade-in {
   animation: fadeIn 0.8s ease-out forwards;
